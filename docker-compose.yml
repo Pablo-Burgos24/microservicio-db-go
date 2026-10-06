@@ -1,0 +1,58 @@
+# Microservicio de base de datos Go - Proyecto aislado para evitar conflictos de "huérfanos"
+# El servicio se conecta a la red externa compartida.
+name: microservicio-db-go
+
+services:
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password}
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mongosh --quiet --username "$${MONGO_INITDB_ROOT_USERNAME}" --password "$${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval "db.adminCommand('ping').ok"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - shared-network
+
+  microservicio-db-go:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: microservicio-db-go:v1.0.0
+    restart: unless-stopped
+    expose:
+      - "8080"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      - MONGODB_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-password}@mongo:27017/?authSource=admin
+      - MONGODB_DB=${MONGODB_DB_NAME:-pdf_db}
+      - MONGODB_COLLECTION=${MONGODB_COLLECTION:-extracted_texts}
+      - TZ=${TZ:-UTC}
+      - PORT=8080
+      - MAX_UPLOAD_MB=${PDF_MAX_SIZE_MB:-25}
+      - REQUEST_TIMEOUT=10s
+      - SHUTDOWN_TIMEOUT=15s
+      - ERR_BASE_URL=${ERR_BASE_URL:-https://errors.example.com}
+      - MAX_IN_FLIGHT=32
+    networks:
+      - shared-network
+
+networks:
+  shared-network:
+    name: ${SHARED_NETWORK_NAME:-default-shared-network}
+    external: true
+
+volumes:
+  mongo-data:
+    name: pdf-extractext_mongo_data
+    external: true
