@@ -1,4 +1,4 @@
-package tests
+package application
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"microservicio-db-go/domain"
 )
 
-// MockHealthRepository es un mock de domain.HealthRepository para tests
+// MockHealthRepository es un mock de domain.HealthRepository para tests.
 type MockHealthRepository struct {
 	mock.Mock
 }
@@ -53,3 +53,5 @@ func TestHealthUseCase_IsHealthy(t *testing.T) {
 		})
 	}
 }
+
+var _ domain.HealthRepository = (*MockHealthRepository)(nil)

@@ -43,7 +43,22 @@ func (u *DocumentUpdate) GetChanges() map[string]any {
 }
 
 // PageQuery encapsula los parámetros de paginación de una consulta de listado.
+// Los campos son opcionales: si `limit` se omite, Normalize aplica un default
+// acotado en vez de rechazar la petición.
 type PageQuery struct {
-	Skip  int64 `form:"skip" binding:"gte=0"`
-	Limit int64 `form:"limit" binding:"gte=1,lte=500"`
+	Skip  int64 `form:"skip" binding:"omitempty,gte=0"`
+	Limit int64 `form:"limit" binding:"omitempty,gte=1,lte=500"`
+}
+
+// DefaultPageLimit es el tamaño de página usado cuando el cliente no envía `limit`.
+const DefaultPageLimit int64 = 100
+
+// Normalize aplica los defaults de paginación sobre la query (idempotente).
+func (q *PageQuery) Normalize() {
+	if q.Limit <= 0 {
+		q.Limit = DefaultPageLimit
+	}
+	if q.Skip < 0 {
+		q.Skip = 0
+	}
 }

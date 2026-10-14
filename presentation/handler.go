@@ -20,6 +20,7 @@ type DocumentUseCase interface {
 	GetDocument(ctx context.Context, docID string) (*domain.DocumentResponse, error)
 	UpdateDocument(ctx context.Context, docID string, update *domain.DocumentUpdate) (*domain.DocumentResponse, error)
 	DeleteDocument(ctx context.Context, docID string) error
+	ExistsByChecksum(ctx context.Context, checksum string) (bool, error)
 }
 
 // HealthUseCase reporta la salud de dependencias; satisfecha por
@@ -71,7 +72,7 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 
 	var req struct {
 		Filename      string `json:"filename" binding:"required"`
-		TextContent   string `json:"text_content" binding:"required"`
+		TextContent   string `json:"text_content"`
 		Checksum      string `json:"checksum" binding:"required"`
 		FileSizeBytes int64  `json:"file_size_bytes" binding:"required,gt=0"`
 	}
@@ -82,6 +83,14 @@ func (h *Handler) CreateDocument(c *gin.Context) {
 			return
 		}
 		writeProblemWithDetail(c, h.cfg.ErrBaseURL, "invalid-document-id", instance, "Cuerpo de petición inválido: "+err.Error())
+		return
+	}
+
+	// M2: una extracción vacía (PDF sólo imagen) es una entrada válida del
+	// extractor, así que se rechaza explícitamente con 422 en vez de un 400
+	// genérico por `required`.
+	if req.TextContent == "" {
+		writeProblem(c, h.cfg.ErrBaseURL, problemTypeEmptyExtraction, instance)
 		return
 	}
 
@@ -112,6 +121,8 @@ func (h *Handler) ListDocuments(c *gin.Context) {
 		writeProblemWithDetail(c, h.cfg.ErrBaseURL, "invalid-document-id", c.Request.URL.Path, "Parámetros de consulta inválidos: "+err.Error())
 		return
 	}
+	// M1: aplica el default de `limit` cuando el cliente lo omite.
+	query.Normalize()
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), h.cfg.RequestTimeout)
 	defer cancel()
@@ -126,6 +137,27 @@ func (h *Handler) ListDocuments(c *gin.Context) {
 		docs = []*domain.DocumentResponse{}
 	}
 	c.JSON(http.StatusOK, docs)
+}
+
+// ExistsByChecksum maneja GET /api/v1/documents/checksum/:checksum.
+// Devuelve 200 si existe un documento con ese checksum, 404 si no.
+func (h *Handler) ExistsByChecksum(c *gin.Context) {
+	checksum := c.Param("checksum")
+	instance := c.Request.URL.Path
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), h.cfg.RequestTimeout)
+	defer cancel()
+
+	exists, err := h.docUC.ExistsByChecksum(ctx, checksum)
+	if err != nil {
+		h.writeDomainError(c, err, instance)
+		return
+	}
+	if !exists {
+		writeProblem(c, h.cfg.ErrBaseURL, "document-not-found", instance)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"checksum": checksum, "exists": true})
 }
 
 // GetDocument maneja GET /api/v1/documents/:id
@@ -209,13 +241,9 @@ func (h *Handler) HealthReadiness(c *gin.Context) {
 }
 
 func (h *Handler) writeDomainError(c *gin.Context, err error, instance string) {
-	slug := domain.SlugFor(err)
-	if slug == "server-error" {
-		// No filtrar detalles internos
-		writeProblem(c, h.cfg.ErrBaseURL, slug, instance)
-		return
-	}
-	writeProblem(c, h.cfg.ErrBaseURL, slug, instance)
+	// SlugFor mapea errores internos/desconocidos a "server-error"; el registry
+	// de problemas nunca filtra detalles internos.
+	writeProblem(c, h.cfg.ErrBaseURL, domain.SlugFor(err), instance)
 }
 
 // isTooLarge detecta el corte de http.MaxBytesReader.

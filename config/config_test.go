@@ -1,4 +1,4 @@
-package tests
+package config
 
 import (
 	"os"
@@ -17,7 +17,7 @@ func TestLoad_Defaults(t *testing.T) {
 	assert.Equal(t, defaultPort, cfg.Port)
 	assert.Equal(t, defaultDB, cfg.MongoDB)
 	assert.Equal(t, defaultCollection, cfg.MongoCollection)
-	assert.Equal(t, defaultMaxUploadBytes, cfg.MaxUploadBytes)
+	assert.Equal(t, int64(defaultMaxUploadBytes), cfg.MaxUploadBytes)
 	assert.Equal(t, defaultRequestTimeout, cfg.RequestTimeout)
 	assert.Equal(t, defaultShutdownTimeout, cfg.ShutdownTimeout)
 	assert.Equal(t, defaultErrBaseURL, cfg.ErrBaseURL)

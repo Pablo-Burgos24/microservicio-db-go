@@ -62,8 +62,23 @@ func TestDocumentUpdate_GetChanges(t *testing.T) {
 
 func TestPageQuery_Defaults(t *testing.T) {
 	q := PageQuery{}
+	q.Normalize()
 	assert.Equal(t, int64(0), q.Skip)
 	assert.Equal(t, int64(100), q.Limit)
+}
+
+func TestPageQuery_Normalize_KeepsExplicitValues(t *testing.T) {
+	q := PageQuery{Skip: 5, Limit: 25}
+	q.Normalize()
+	assert.Equal(t, int64(5), q.Skip)
+	assert.Equal(t, int64(25), q.Limit)
+}
+
+func TestPageQuery_Normalize_ClampsNegativeValues(t *testing.T) {
+	q := PageQuery{Skip: -10, Limit: -1}
+	q.Normalize()
+	assert.Equal(t, int64(0), q.Skip)
+	assert.Equal(t, DefaultPageLimit, q.Limit)
 }
 
 func stringPtr(s string) *string {

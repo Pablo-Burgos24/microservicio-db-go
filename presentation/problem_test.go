@@ -1,4 +1,4 @@
-package tests
+package presentation
 
 import (
 	"encoding/json"
@@ -46,7 +46,9 @@ func TestWriteProblem_UnknownSlugDefaultsToInternal(t *testing.T) {
 	var prob problem
 	err := json.Unmarshal(w.Body.Bytes(), &prob)
 	assert.NoError(t, err)
-	assert.Equal(t, "https://errors.example.com/server-error", prob.Type)
+	// El `type` conserva el slug recibido; title/status/detail caen al
+	// fallback interno para no filtrar detalles.
+	assert.Equal(t, "https://errors.example.com/unknown-slug", prob.Type)
 	assert.Equal(t, "Error Interno del Servidor", prob.Title)
 	assert.Equal(t, http.StatusInternalServerError, prob.Status)
 }
@@ -77,6 +79,7 @@ func TestProblemRegistry_AllSlugsHaveDefinitions(t *testing.T) {
 		"too-large",
 		"service-unavailable",
 		"busy",
+		"empty-extraction",
 	}
 
 	for _, slug := range requiredSlugs {

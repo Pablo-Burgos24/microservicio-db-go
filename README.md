@@ -5,7 +5,7 @@ Microservicio de persistencia MongoDB escrito en Go para el proyecto pdf-extract
 ## Arquitectura
 
 ```
-microservicio-db-go/
+microservicio-db/
 ├── cmd/api/                 # Punto de entrada (main.go)
 ├── config/                  # Configuración validada via variables de entorno
 ├── domain/                  # Modelos de dominio, puertos y errores
@@ -101,11 +101,8 @@ go build -o microservicio-db-go ./cmd/api
 # Build imagen
 docker build -t microservicio-db-go:v1.0.0 .
 
-# Desde esta carpeta, iniciar primero MongoDB en la red compartida
-docker compose --env-file ..\pdf-extractext\.env -f ..\pdf-extractext\docker-compose.db.yml up -d
-
-# Iniciar el microservicio con su configuración local en .env
-docker compose --env-file .env -f docker-compose.yml up --build -d
+# Desde esta carpeta, levantar MongoDB, Redis y la API en la red compartida
+docker compose --env-file .env -f docker-compose.yml up -d --build
 ```
 
 ## Integración con FastAPI (Orquestador)

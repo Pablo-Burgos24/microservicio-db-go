@@ -1,4 +1,4 @@
-package tests
+package domain
 
 import (
 	"errors"
@@ -9,10 +9,10 @@ import (
 
 func TestDomainErrors(t *testing.T) {
 	tests := []struct {
-		name        string
-		err         error
+		name         string
+		err          error
 		expectedCode string
-		expectedMsg string
+		expectedMsg  string
 	}{
 		{
 			name:         "DocumentNotFoundError",
@@ -42,10 +42,21 @@ func TestDomainErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var de *DomainError
-			assert.ErrorAs(t, tt.err, &de)
-			assert.Equal(t, tt.expectedCode, de.Code)
-			assert.Equal(t, tt.expectedMsg, de.Detail)
+			var code, detail string
+			switch e := tt.err.(type) {
+			case *DocumentNotFoundError:
+				code, detail = e.Code, e.Detail
+			case *InvalidDocumentIdError:
+				code, detail = e.Code, e.Detail
+			case *DocumentAlreadyExistsError:
+				code, detail = e.Code, e.Detail
+			case *InternalError:
+				code, detail = e.Code, e.Detail
+			default:
+				t.Fatalf("tipo de error inesperado: %T", e)
+			}
+			assert.Equal(t, tt.expectedCode, code)
+			assert.Equal(t, tt.expectedMsg, detail)
 			assert.Equal(t, tt.expectedMsg, tt.err.Error())
 		})
 	}

@@ -1,7 +1,8 @@
-package tests
+package application
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -11,7 +12,7 @@ import (
 	"microservicio-db-go/domain"
 )
 
-// MockDocumentRepository es un mock de domain.DocumentRepository para tests
+// MockDocumentRepository es un mock de domain.DocumentRepository para tests.
 type MockDocumentRepository struct {
 	mock.Mock
 }
@@ -65,13 +66,17 @@ func (m *MockDocumentRepository) EnsureIndexes(ctx context.Context) error {
 
 func makeResponse() *domain.DocumentResponse {
 	return &domain.DocumentResponse{
-		ID:             "60d5ecb8b392d70008051234",
-		Filename:       "test.pdf",
-		TextContent:    "contenido",
-		Checksum:       "abc123",
-		FileSizeBytes:  1024,
-		CreatedAt:      time.Now().UTC(),
+		ID:            "60d5ecb8b392d70008051234",
+		Filename:      "test.pdf",
+		TextContent:   "contenido",
+		Checksum:      "abc123",
+		FileSizeBytes: 1024,
+		CreatedAt:     time.Now().UTC(),
 	}
+}
+
+func stringPtr(s string) *string {
+	return &s
 }
 
 func TestDocumentUseCase_CreateDocument(t *testing.T) {
@@ -80,11 +85,11 @@ func TestDocumentUseCase_CreateDocument(t *testing.T) {
 
 	ctx := context.Background()
 	data := &domain.DocumentCreate{
-		Filename:       "test.pdf",
-		TextContent:    "contenido",
-		Checksum:       "abc123",
-		FileSizeBytes:  1024,
-		CreatedAt:      time.Now().UTC(),
+		Filename:      "test.pdf",
+		TextContent:   "contenido",
+		Checksum:      "abc123",
+		FileSizeBytes: 1024,
+		CreatedAt:     time.Now().UTC(),
 	}
 
 	mockRepo.On("ExistsByChecksum", ctx, "abc123").Return(false, nil)
@@ -107,11 +112,11 @@ func TestDocumentUseCase_CreateDocument_DuplicateChecksum(t *testing.T) {
 
 	ctx := context.Background()
 	data := &domain.DocumentCreate{
-		Filename:       "test.pdf",
-		TextContent:    "contenido",
-		Checksum:       "abc123",
-		FileSizeBytes:  1024,
-		CreatedAt:      time.Now().UTC(),
+		Filename:      "test.pdf",
+		TextContent:   "contenido",
+		Checksum:      "abc123",
+		FileSizeBytes: 1024,
+		CreatedAt:     time.Now().UTC(),
 	}
 
 	// Pre-check encuentra duplicado
@@ -133,11 +138,11 @@ func TestDocumentUseCase_CreateDocument_RaceCondition(t *testing.T) {
 
 	ctx := context.Background()
 	data := &domain.DocumentCreate{
-		Filename:       "test.pdf",
-		TextContent:    "contenido",
-		Checksum:       "abc123",
-		FileSizeBytes:  1024,
-		CreatedAt:      time.Now().UTC(),
+		Filename:      "test.pdf",
+		TextContent:   "contenido",
+		Checksum:      "abc123",
+		FileSizeBytes: 1024,
+		CreatedAt:     time.Now().UTC(),
 	}
 
 	// Pre-check pasa, pero create falla por carrera TOCTOU
@@ -281,6 +286,17 @@ func TestDocumentUseCase_EnsureIndexes(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 }
 
-func stringPtr(s string) *string {
-	return &s
+func TestDocumentUseCase_ExistsByChecksum(t *testing.T) {
+	mockRepo := new(MockDocumentRepository)
+	uc := NewDocumentUseCase(mockRepo)
+
+	ctx := context.Background()
+	mockRepo.On("ExistsByChecksum", ctx, "abc123").Return(true, nil)
+
+	exists, err := uc.ExistsByChecksum(ctx, "abc123")
+
+	assert.NoError(t, err)
+	assert.True(t, exists)
+
+	mockRepo.AssertExpectations(t)
 }

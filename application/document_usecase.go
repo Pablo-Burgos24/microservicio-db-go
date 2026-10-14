@@ -52,3 +52,9 @@ func (uc *DocumentUseCase) UpdateDocument(ctx context.Context, docID string, upd
 func (uc *DocumentUseCase) DeleteDocument(ctx context.Context, docID string) error {
 	return uc.repo.Delete(ctx, docID)
 }
+
+// ExistsByChecksum reporta si ya existe un documento con el checksum dado.
+// Alimenta el endpoint de deduplicación y el pre-check del monolito.
+func (uc *DocumentUseCase) ExistsByChecksum(ctx context.Context, checksum string) (bool, error) {
+	return uc.repo.ExistsByChecksum(ctx, checksum)
+}

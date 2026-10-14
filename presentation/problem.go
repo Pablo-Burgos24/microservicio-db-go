@@ -5,15 +5,18 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-
-	"microservicio-db-go/domain"
 )
+
+// serverErrorSlug es el slug RFC 9457 canónico para errores internos,
+// compartido con microservicio-go (domain.ErrorTypeInternal) y el monolito.
+const serverErrorSlug = "server-error"
 
 // Tipos de problema solo de presentación (detectados antes del caso de uso).
 const (
 	problemTypeTooLarge           = "too-large"
 	problemTypeServiceUnavailable = "service-unavailable"
 	problemTypeBusy               = "busy"
+	problemTypeEmptyExtraction    = "empty-extraction"
 )
 
 type problemDefinition struct {
@@ -40,7 +43,7 @@ var problemRegistry = map[string]problemDefinition{
 		title:  "Documento duplicado",
 		detail: "El documento ya fue cargado previamente.",
 	},
-	domain.ErrorCodeInternal: {
+	serverErrorSlug: {
 		status: http.StatusInternalServerError,
 		title:  "Error Interno del Servidor",
 		detail: "Ha ocurrido un error inesperado en el servidor. Por favor, intente más tarde.",
@@ -60,6 +63,11 @@ var problemRegistry = map[string]problemDefinition{
 		title:  "Servicio Ocupado",
 		detail: "El servicio está al límite de capacidad; reintente la petición más tarde.",
 	},
+	problemTypeEmptyExtraction: {
+		status: http.StatusUnprocessableEntity,
+		title:  "Extracción vacía",
+		detail: "El PDF no contiene texto extraíble; el contenido está vacío.",
+	},
 }
 
 type problem struct {
@@ -74,7 +82,7 @@ type problem struct {
 func writeProblem(c *gin.Context, baseURL, slug, instance string) {
 	def, ok := problemRegistry[slug]
 	if !ok {
-		def = problemRegistry[domain.ErrorCodeInternal]
+		def = problemRegistry[serverErrorSlug]
 	}
 	writeProblemDoc(c, baseURL, slug, def.title, def.detail, def.status, instance)
 }
@@ -96,7 +104,7 @@ func writeProblemDoc(c *gin.Context, baseURL, slug, title, detail string, status
 func writeProblemWithDetail(c *gin.Context, baseURL, slug, instance, customDetail string) {
 	def, ok := problemRegistry[slug]
 	if !ok {
-		def = problemRegistry[domain.ErrorCodeInternal]
+		def = problemRegistry[serverErrorSlug]
 	}
 	c.Header("Content-Type", "application/problem+json")
 	c.JSON(def.status, problem{

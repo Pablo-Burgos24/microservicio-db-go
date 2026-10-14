@@ -3,6 +3,22 @@
 name: microservicio-db-go
 
 services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # AOF: las entradas de caché del extractor sobreviven a un reinicio.
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - shared-network
+
   mongo:
     image: mongo:8.0
     restart: unless-stopped
@@ -28,6 +44,16 @@ services:
       dockerfile: Dockerfile
     image: microservicio-db-go:v1.0.0
     restart: unless-stopped
+    # Inmutabilidad en runtime (D1/D4): UID/GID fijo, rootfs de solo lectura,
+    # sin capabilities y sin escalada de privilegios.
+    user: "10001:10001"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp
     expose:
       - "8080"
     depends_on:
@@ -35,24 +61,25 @@ services:
         condition: service_healthy
     environment:
       - MONGODB_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-password}@mongo:27017/?authSource=admin
-      - MONGODB_DB=${MONGODB_DB_NAME:-pdf_db}
+      - MONGODB_DB=${MONGODB_DB:-pdf_db}
       - MONGODB_COLLECTION=${MONGODB_COLLECTION:-extracted_texts}
       - TZ=${TZ:-UTC}
-      - PORT=8080
-      - MAX_UPLOAD_MB=${PDF_MAX_SIZE_MB:-25}
-      - REQUEST_TIMEOUT=10s
-      - SHUTDOWN_TIMEOUT=15s
+      - PORT=${PORT:-8080}
+      - MAX_UPLOAD_MB=${MAX_UPLOAD_MB:-25}
+      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT:-10s}
+      - SHUTDOWN_TIMEOUT=${SHUTDOWN_TIMEOUT:-15s}
       - ERR_BASE_URL=${ERR_BASE_URL:-https://errors.example.com}
-      - MAX_IN_FLIGHT=32
+      - MAX_IN_FLIGHT=${MAX_IN_FLIGHT:-32}
     networks:
       - shared-network
 
 networks:
   shared-network:
-    name: ${SHARED_NETWORK_NAME:-default-shared-network}
+    name: ${SHARED_NETWORK_NAME:-test_network}
     external: true
 
 volumes:
   mongo-data:
     name: pdf-extractext_mongo_data
     external: true
+  redis-data:
