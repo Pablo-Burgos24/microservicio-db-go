@@ -87,12 +87,12 @@ func makeResponse() *domain.DocumentResponse {
 
 func setupRouter(docUC DocumentUseCase, healthUC HealthUseCase) *gin.Engine {
 	gin.SetMode(gin.TestMode)
-	return NewRouter(docUC, healthUC, Config{
+	return NewRouter(docUC, healthUC, NewStaticConfigProvider(Config{
 		ErrBaseURL:     "https://errors.example.com",
 		MaxUploadBytes: 25 * 1024 * 1024,
 		RequestTimeout: 10 * time.Second,
 		MaxInFlight:    32,
-	})
+	}))
 }
 
 func TestHandler_CreateDocument_Success(t *testing.T) {
