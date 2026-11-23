@@ -1,0 +1,22 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation (local)
+microservicio db.md
+
+# Environment
+.env
+.env.local
