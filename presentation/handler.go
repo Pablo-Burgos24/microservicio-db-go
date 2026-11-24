@@ -211,6 +211,33 @@ func (h *Handler) UpdateDocument(c *gin.Context) {
 	c.JSON(http.StatusOK, doc)
 }
 
+// UpdateSummary maneja PATCH /api/v1/documents/:id/summary
+// Actualiza únicamente el campo summary del documento (usado por microservicio-resume).
+func (h *Handler) UpdateSummary(c *gin.Context) {
+	cfg := h.currentConfig()
+	docID := c.Param("id")
+	instance := c.Request.URL.Path
+
+	var req struct {
+		Summary string `json:"summary" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		writeProblemWithDetail(c, cfg.ErrBaseURL, "invalid-document-id", instance, "Cuerpo de petición inválido: "+err.Error())
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), cfg.RequestTimeout)
+	defer cancel()
+
+	doc, err := h.docUC.UpdateSummary(ctx, docID, req.Summary)
+	if err != nil {
+		h.writeDomainError(c, err, instance)
+		return
+	}
+
+	c.JSON(http.StatusOK, doc)
+}
+
 // DeleteDocument maneja DELETE /api/v1/documents/:id
 func (h *Handler) DeleteDocument(c *gin.Context) {
 	cfg := h.currentConfig()

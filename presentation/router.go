@@ -55,7 +55,8 @@ func NewRouter(docUC DocumentUseCase, healthUC HealthUseCase, provider ConfigPro
 		api.GET("/checksum/:checksum", h.ExistsByChecksum)
 		api.GET("/:id", h.GetDocument)
 		api.PATCH("/:id", h.UpdateDocument)
-		api.DELETE("/:id", h.DeleteDocument)
+	api.PATCH("/:id/summary", h.UpdateSummary)
+	api.DELETE("/:id", h.DeleteDocument)
 	}
 
 	return r

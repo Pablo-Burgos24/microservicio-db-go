@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"encoding/hex"
 	"time"
 )
 
@@ -11,6 +12,7 @@ type DocumentCreate struct {
 	Checksum       string    `json:"checksum" bson:"checksum" validate:"required"`
 	FileSizeBytes  int64     `json:"file_size_bytes" bson:"file_size_bytes" validate:"required,gt=0"`
 	CreatedAt      time.Time `json:"created_at" bson:"created_at"`
+	Summary        string    `json:"summary,omitempty" bson:"summary,omitempty"`
 }
 
 // DocumentResponse es la representación pública de un documento (lo que ve el cliente).
@@ -21,6 +23,16 @@ type DocumentResponse struct {
 	Checksum       string    `json:"checksum" bson:"checksum"`
 	FileSizeBytes  int64     `json:"file_size_bytes" bson:"file_size_bytes"`
 	CreatedAt      time.Time `json:"created_at" bson:"created_at"`
+	Summary        string    `json:"summary,omitempty" bson:"summary,omitempty"`
+}
+
+// IsChecksum indica si el identificador provisto es un SHA-256 (64 hex).
+func IsChecksum(id string) bool {
+	if len(id) != 64 {
+		return false
+	}
+	_, err := hex.DecodeString(id)
+	return err == nil
 }
 
 // DocumentUpdate representa los campos actualizables de un documento.
@@ -28,6 +40,7 @@ type DocumentResponse struct {
 type DocumentUpdate struct {
 	Filename    *string `json:"filename,omitempty" bson:"filename,omitempty"`
 	TextContent *string `json:"text_content,omitempty" bson:"text_content,omitempty"`
+	Summary     *string `json:"summary,omitempty" bson:"summary,omitempty"`
 }
 
 // GetChanges devuelve solo los campos provistos por el cliente.
@@ -38,6 +51,9 @@ func (u *DocumentUpdate) GetChanges() map[string]any {
 	}
 	if u.TextContent != nil {
 		changes["text_content"] = *u.TextContent
+	}
+	if u.Summary != nil {
+		changes["summary"] = *u.Summary
 	}
 	return changes
 }
